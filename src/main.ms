@@ -16,8 +16,11 @@ currentRestartTime = 0
 
 
 
-display(3).mode = displayMode.sprite
-overlay = display(3)
+display(2).mode = displayMode.sprite
+overlay = display(2)
+overlay.clear
+
+text.color = "#AAAACC"
 
 display(4).mode = displayMode.pixel
 gfx = display(4)
@@ -169,6 +172,11 @@ drawGame = function
 	else
 		oxygenText.scale = [4,4]
 	end if
+	
+	// Draw level display
+	text.row = 25
+	text.column = 59
+	print "Level: " + (currentLevelIndex + 1)
 end function
 
 
