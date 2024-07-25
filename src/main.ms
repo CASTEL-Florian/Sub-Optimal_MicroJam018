@@ -176,7 +176,7 @@ drawGame = function
 	// Draw level display
 	text.row = 25
 	text.column = 59
-	print "Level: " + (currentLevelIndex + 1)
+	print "Level: " + (currentLevelIndex + 1) + " "
 end function
 
 
