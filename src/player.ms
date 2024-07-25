@@ -1,3 +1,5 @@
+import "mathUtil"
+
 playerStartX = 5
 playerStartY = 5
 playerX = 5
@@ -166,17 +168,28 @@ handleRotation = function()
 end function
 
 handleInput = function(tiles)
-	
-	if key.pressed("up") or key.pressed("w") then
+	// Use key.axis, to support gamepads too!
+	if key.axis("Vertical") > 0.5 then
 		movePlayer 0, 1, tiles
-	else if key.pressed("down") or key.pressed("s") then
+	else if key.axis("Vertical") < -0.5 then
 		movePlayer 0, -1, tiles
-	else if key.pressed("left") or key.pressed("a") then
+	else if key.axis("Horizontal") < -0.5 then
 		movePlayer -1, 0, tiles
-	else if key.pressed("right") or key.pressed("d") then
+	else if key.axis("Horizontal") > 0.5 then
 		movePlayer 1, 0, tiles
-    else if key.pressed("r") then
+	else if key.pressed("r") then
 		player.currentOxygen = 0
+	end if
+	
+	if mouse.button then
+		dx = mouse.x - (playerX + 0.5) * tileSize
+		dy = mouse.y - (playerY + 0.5) * tileSize
+		if abs(dx) > abs(dy) then
+			movePlayer sign(dx), 0, tiles
+		else
+			movePlayer 0, sign(dy), tiles
+		end if
+		while mouse.button; yield; end while
 	end if
 end function
 
