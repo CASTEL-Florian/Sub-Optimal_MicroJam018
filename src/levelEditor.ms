@@ -1,4 +1,6 @@
 import "autotile"
+import "bitstream"
+import "base64"
 
 // Constants
 DRAW = 36
@@ -60,6 +62,22 @@ toolHit = function(pos)
 	return null
 end function
 
+removePlayer = function
+	for x in range(0, tileDisp.extent[0]-1)
+		for y in range(0, tileDisp.extent[1]-1)
+			if tileDisp.cell(x,y) == PLAYER then
+				tileDisp.setCell x, y, null
+			end if
+		end for
+	end for
+end function
+
+showLevelCode = function
+	text.row = 4
+	text.column = 2
+	print packLevel + " " * 8
+end function
+
 handleInput = function
 	if mouse.button then
 		tool = toolHit(mouse)
@@ -80,13 +98,49 @@ handleInput = function
 				if tileDisp.cell(col,row) == curTool then
 					tileDisp.setCell col, row, null
 				else
+					if curTool == PLAYER then removePlayer
 					tileDisp.setCell col, row, curTool
 				end if
 				autotile.fixTiles
 				while mouse.button; yield; end while
 			end if
+			showLevelCode
 		end if
 	end if
+end function
+
+packLevel = function
+	// We'll compress the level as follows: 150 bits indicating rock/empty
+	// (1 bit each for 15 x 10 locations); then one byte for the player location;
+	// then ...uh... something else.
+	data = new bitstream.BitWriter
+	playerPos = 255
+	for y in range(0, tileDisp.extent[1]-1)
+		for x in range(0, tileDisp.extent[0]-1)
+			data.writeBit autotile.solid(x, y)
+			if tileDisp.cell(x,y) == PLAYER then
+				playerPos = y * tileDisp.extent[0] + x
+			end if
+		end for
+	end for
+	data.writeByte playerPos
+	
+	return base64.encode(data.getData)
+end function
+
+unpackLevel = function(levelCode)
+	data = new bitstream.BitReader
+	data.rawData = base64.decodeToRawData(levelCode)
+	for y in range(0, tileDisp.extent[1]-1)
+		for x in range(0, tileDisp.extent[0]-1)
+			if data.readBit then idx = 12 else idx = null
+			tileDisp.setCell x, y, idx
+		end for
+	end for
+	playerPos = data.readByte
+	cols = tileDisp.extent[0]
+	tileDisp.setCell playerPos % cols, floor(playerPos / cols), PLAYER
+	autotile.fixTiles
 end function
 
 // Setup
