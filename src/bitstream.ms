@@ -21,12 +21,16 @@ BitWriter.writeBit = function(b)
 	end if
 end function
 
-BitWriter.writeByte = function(byte)
-	mask = 128
+BitWriter.writeBits = function(value, bitCount)
+	mask = 2^(bitCount-1)
 	while mask >= 1
-		self.writeBit bitAnd(byte, mask) > 0
+		self.writeBit bitAnd(value, mask) > 0
 		mask /= 2
 	end while
+end function
+
+BitWriter.writeByte = function(byte)
+	self.writeBits(byte, 8)
 end function
 
 BitWriter.getData = function
@@ -63,12 +67,16 @@ BitReader.readBit = function
 	return result
 end function
 
-BitReader.readByte = function
+BitReader.readBits = function(bitCount)
 	result = 0
-	for i in range(0, 7)
+	for i in range(1,  bitCount)
 		result = result * 2 + self.readBit
 	end for
 	return result
+end function
+
+BitReader.readByte = function
+	return self.readBits(8)
 end function
 
 BitReader.atEnd = function

@@ -112,18 +112,36 @@ end function
 packLevel = function
 	// We'll compress the level as follows: 150 bits indicating rock/empty
 	// (1 bit each for 15 x 10 locations); then one byte for the player location;
-	// then ...uh... something else.
+	// then for each of (BUBBLE, HEART, SHARK), write out a 4-bit count, followed
+	// by the location of each.
 	data = new bitstream.BitWriter
 	playerPos = 255
+	bubbles = []
+	hearts = []
+	sharks = []
 	for y in range(0, tileDisp.extent[1]-1)
 		for x in range(0, tileDisp.extent[0]-1)
 			data.writeBit autotile.solid(x, y)
-			if tileDisp.cell(x,y) == PLAYER then
-				playerPos = y * tileDisp.extent[0] + x
-			end if
+			pos = y * tileDisp.extent[0] + x
+			if tileDisp.cell(x,y) == PLAYER then playerPos = pos
+			if tileDisp.cell(x,y) == BUBBLE then bubbles.push(pos)
+			if tileDisp.cell(x,y) == HEART then hearts.push(pos)
+			if tileDisp.cell(x,y) == SHARK then sharks.push(pos)
 		end for
 	end for
 	data.writeByte playerPos
+	
+	if bubbles.len > 15 then bubbles = bubbles[:15]
+	data.writeBits bubbles.len, 4
+	for pos in bubbles; data.writeByte pos; end for
+	
+	if hearts.len > 15 then hearts = hearts[:15]
+	data.writeBits hearts.len, 4
+	for pos in hearts; data.writeByte pos; end for
+	
+	if sharks.len > 15 then sharks = sharks[:15]
+	data.writeBits sharks.len, 4
+	for pos in sharks; data.writeByte pos; end for
 	
 	return base64.encode(data.getData)
 end function
@@ -140,6 +158,22 @@ unpackLevel = function(levelCode)
 	playerPos = data.readByte
 	cols = tileDisp.extent[0]
 	tileDisp.setCell playerPos % cols, floor(playerPos / cols), PLAYER
+
+	for i in range(1, data.readBits(4), 1)
+		pos = data.readByte
+		tileDisp.setCell pos % cols, floor(pos / cols), BUBBLE		
+	end for
+
+	for i in range(1, data.readBits(4), 1)
+		pos = data.readByte
+		tileDisp.setCell pos % cols, floor(pos / cols), HEART		
+	end for
+
+	for i in range(1, data.readBits(4), 1)
+		pos = data.readByte
+		tileDisp.setCell pos % cols, floor(pos / cols), SHARK		
+	end for
+
 	autotile.fixTiles
 end function
 

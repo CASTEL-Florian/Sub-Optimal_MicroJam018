@@ -1,7 +1,51 @@
+import "stringUtil"
+
 base64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 padding = "="
 
-encode = function(rawData)
+rleEncode = function(s)
+	result = []
+	curChar = ""
+	curCount = 0
+	for c in s + char(0)
+		if c != curChar or curCount == 64 then
+			if curCount < 4 then
+				result += [curChar] * curCount
+			else
+				result.push curChar
+				result.push "*"
+				result.push base64Chars[curCount-4]
+			end if
+			curChar = c
+			curCount = 1
+		else
+			curCount += 1
+		end if
+	end for
+	return result.join("")
+end function
+
+rleDecode = function(s)
+	result = s.split("")
+	while true
+		pos = result.indexOf("*")
+		if pos == null then break
+		if pos == 0 then
+			c = "/"
+		else
+			c = result[pos-1]
+		end if
+		if pos+1 >= result.len then
+			count = 4
+		else
+			count = base64Chars.indexOf(result[pos+1]) + 3
+		end if
+		result = result[:pos] + [c]*count + result[pos+2:]
+	end while
+	return result.join("")
+end function
+
+encode = function(rawData, withRLE=true)
 	if rawData isa string then
 		s = rawData
 		rawData = new RawData
@@ -33,10 +77,16 @@ encode = function(rawData)
 		end if
 	end for
 	
-	return encoded.join("")
+	result = encoded.join("")
+	if withRLE then result = rleEncode(result)
+	return result
 end function
 
 decodeToList = function(encodedStr)
+	encodedStr = encodedStr.trim
+	if encodedStr.indexOf("*") != null then
+		encodedStr = rleDecode(encodedStr)
+	end if
 	decodedBytes = []
 	
 	// Function to get the index of a character in base64Chars
@@ -104,6 +154,11 @@ runUnitTests = function
 	assertEqual decodeToString("SGVsbG8gd29ybGQh"), "Hello world!"
 	assertEqual decodeToString("VGhpcyBpcyBhIHRlc3QuLi4="), "This is a test..."
 	
+	assertEqual rleEncode("mmmm!"), "m*A!"
+	assertEqual rleDecode("m*A!"), "mmmm!"
+	assertEqual rleEncode("A"*100 + "foo"), "A*8A*gfoo"
+	assertEqual rleDecode("A*8A*gfoo"), "A"*100 + "foo"
+		
 	if errorCount == 0 then
 		print "All tests passed."
 	else
