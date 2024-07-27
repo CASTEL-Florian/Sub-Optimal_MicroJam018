@@ -17,7 +17,7 @@ lastTime = 0
 // Restart
 isRestarting = false
 currentRestartTime = 0
-
+Sound.stopAll
 
 
 display(2).mode = displayMode.sprite
@@ -106,12 +106,15 @@ loadLevel = function(levelNumOrCode)
 	end if
 	tiles.clear
 	
-//	display(7).color = level.bgColor
-
 	tiles.tileSetTileSize = 16
 	tiles.cellSize = 64
 	tiles.extent = [15,10]
 	levelEditor.unpackLevel levelNumOrCode
+	if tiles.tileSet.name == "Abyss.png" then
+		display(7).color = color.rgb(29,26,89)
+	else
+		display(7).color = color.rgb(53,74,178)
+	end if
 	
 	disp.sprites = []
 	globals.collectables = []
@@ -152,27 +155,17 @@ loadLevel = function(levelNumOrCode)
 	disp.sprites.push player.submarine
 	player.resetPlayer
 	
-//
-//	globals.tileSize = globals.tiles.cellSize[0]
-//	globals.disp.sprites = []
-//	globals.collectables = level.collectables
-//	globals.sharks = level.sharks
-//	
-//	if level.thanksText then globals.disp.sprites.push thanksText
 	for h in hearts
 		globals.disp.sprites.push h
 	end for
 	for collectable in collectables
-		globals.disp.sprites.push collectable.sprite
 		collectable.reset
+		globals.disp.sprites.push collectable.sprite
 	end for
 	for sh in globals.sharks
-		globals.disp.sprites.push sh.sprite
 		sh.reset
+		globals.disp.sprites.push sh.sprite
 	end for
-//	player.playerStartX = level.playerStartPos[0]
-//	player.playerStartY = level.playerStartPos[1]
-//	player.resetPlayer
 	sharkAttacking = null
 	disp.sprites.push oxygenText
 end function
@@ -254,15 +247,14 @@ end function
 
 
 handleRestart = function
-	if currentRestartTime < 1 and currentRestartTime + globals.deltaTime >= 1 then 
+	if currentRestartTime < 1 and currentRestartTime + deltaTime >= 1 then 
+		gfx.clear color.black
 		loadLevel currentLevelIndex
 	end if
-	globals.currentRestartTime += globals.deltaTime
+	globals.currentRestartTime += deltaTime
 	t = -abs(currentRestartTime - 1) + 1
-	gfx.clear color.black
 	drawGame
-	gfx.color = color.rgba(0, 0, 0, 255 * t)
-	gfx.fillRect 0, 0, gfx.width, gfx.height
+	gfx.clear color.rgba(0, 0, 0, 255 * t)
 	if currentRestartTime >= 2 then
 		globals.isRestarting = false
 	end if

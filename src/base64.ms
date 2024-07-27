@@ -66,14 +66,10 @@ encode = function(rawData, withRLE=true)
 		
 		if i + 1 < byteCount then
 			encoded.push base64Chars[bitAnd((b2 % 16) * 4, 63) + floor(b3 / 64)]
-		else
-			encoded.push padding
 		end if
 		
 		if i + 2 < byteCount then
 			encoded.push base64Chars[bitAnd(b3, 63)]
-		else
-			encoded.push padding
 		end if
 	end for
 	
@@ -95,13 +91,14 @@ decodeToList = function(encodedStr)
 	end function
 
 	i = 0
-	while i < encodedStr.len
+	maxi = encodedStr.len - 1
+	while i <= maxi
 		b1 = base64Chars.indexOf(encodedStr[i])
 		b2 = base64Chars.indexOf(encodedStr[i + 1])
 		b3 = -1
-		if encodedStr[i + 2] != padding then b3 = base64Chars.indexOf(encodedStr[i + 2])
+		if i + 2 <= maxi then b3 = base64Chars.indexOf(encodedStr[i + 2])
 		b4 = -1
-		if encodedStr[i + 3] != padding then b4 = base64Chars.indexOf(encodedStr[i + 3])
+		if i + 3 <= maxi then b4 = base64Chars.indexOf(encodedStr[i + 3])
 
 		decodedBytes.push b1 * 4 + floor(b2 / 16)
 		if b3 >= 0 then
@@ -149,10 +146,10 @@ runUnitTests = function
 	end function
 	
 	assertEqual encode("Hello world!"), "SGVsbG8gd29ybGQh"
-	assertEqual encode("This is a test..."), "VGhpcyBpcyBhIHRlc3QuLi4="
+	assertEqual encode("This is a test..."), "VGhpcyBpcyBhIHRlc3QuLi4"
 	
 	assertEqual decodeToString("SGVsbG8gd29ybGQh"), "Hello world!"
-	assertEqual decodeToString("VGhpcyBpcyBhIHRlc3QuLi4="), "This is a test..."
+	assertEqual decodeToString("VGhpcyBpcyBhIHRlc3QuLi4"), "This is a test..."
 	
 	assertEqual rleEncode("mmmm!"), "m*A!"
 	assertEqual rleDecode("m*A!"), "mmmm!"
