@@ -65,8 +65,8 @@ fixTile = function(x,y)
 end function
 
 fixTiles = function
-	for x in range(0,tileDisp.extent[0]-1)
-		for y in range(0,tileDisp.extent[1]-1)
+	for x in range(0, tileDisp.extent[0]-1)
+		for y in range(0, tileDisp.extent[1]-1)
 			fixTile x,y
 		end for
 	end for

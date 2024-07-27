@@ -1,6 +1,8 @@
-import "autotile"
-import "bitstream"
-import "base64"
+import "importUtil"
+ensureImport "autotile"
+ensureImport "bitstream"
+ensureImport "base64"
+ensureImport "qa"
 
 // Constants
 DRAW = 36
@@ -9,6 +11,8 @@ HEART = 54
 SHARK = 65
 BUBBLE = 76
 PLAYER = 87
+
+autotile.nonSolidIndexes = [HEART, SHARK, BUBBLE, PLAYER]
 
 // Utility functions
 
@@ -147,8 +151,13 @@ packLevel = function
 end function
 
 unpackLevel = function(levelCode)
+	qa.assert levelCode isa string
 	data = new bitstream.BitReader
 	data.rawData = base64.decodeToRawData(levelCode)
+
+	// todo: load correct tile set
+	tileDisp.tileSet = file.loadImage("../images/Cliff.png")
+
 	for y in range(0, tileDisp.extent[1]-1)
 		for x in range(0, tileDisp.extent[0]-1)
 			if data.readBit then idx = 12 else idx = null
@@ -177,44 +186,50 @@ unpackLevel = function(levelCode)
 	autotile.fixTiles
 end function
 
-// Setup
-
-clear
-
-display(7).color = color.gray
-
-display(6).mode = displayMode.tile
-tileDisp = display(6)
-tileDisp.tileSet = file.loadImage("../images/Cliff.png")
-tileDisp.tileSetTileSize = 16
-tileDisp.cellSize = 48
-tileDisp.extent = [15,10]
-tileDisp.scrollX = -20
-tileDisp.scrollY = -(620 - tileDisp.extent[1] * tileDisp.cellSize)
-tileDisp.clear 12
-autotile.tileDisp = tileDisp
-autotile.nonSolidIndexes = [HEART, SHARK, BUBBLE, PLAYER]
-
-gfx.clear color.clear
-gfx.drawRect -tileDisp.scrollX-4, -tileDisp.scrollY-4,
-    tileDisp.extent[0] * tileDisp.cellSize + 8,
-    tileDisp.extent[1] * tileDisp.cellSize + 8, "#AAAAFF", 8
-
-text.color = color.silver
-
-
-toolIcons = {}
-toolButtonPos = {}
-for item in [DRAW, CLEAR, HEART, SHARK, BUBBLE, PLAYER]
-	toolIcons[item] = getTileForIndex(item)
-end for
-curTool = DRAW
-drawTools curTool
-
-// Main Loop
-
-while not key.pressed("escape")
-	handleInput
-	yield
-end while
-key.clear
+if locals == globals then
+	// Setup
+	clear
+	display(7).color = color.gray
+	
+	display(6).mode = displayMode.tile
+	tileDisp = display(6)
+	tileDisp.tileSet = file.loadImage("../images/Cliff.png")
+	tileDisp.tileSetTileSize = 16
+	tileDisp.cellSize = 48
+	tileDisp.extent = [15,10]
+	tileDisp.scrollX = -20
+	tileDisp.scrollY = -(620 - tileDisp.extent[1] * tileDisp.cellSize)
+	tileDisp.clear 12
+	autotile.tileDisp = tileDisp
+	
+	gfx.clear color.clear
+	x0 = -tileDisp.scrollX
+	y0 = -tileDisp.scrollY
+	x1 = x0 + tileDisp.extent[0] * tileDisp.cellSize
+	y1 = y0 + tileDisp.extent[1] * tileDisp.cellSize
+	gfx.drawRect x0-4, y0-4, x1-x0+8, y1-y0+8, "#AAAAFF", 8
+	for x in range(x0, x1, tileDisp.cellSize)
+		gfx.line x, y0, x, y1, "#AAAAAA"
+	end for
+	for y in range(y0, y1, tileDisp.cellSize)
+		gfx.line x0, y, x1, y, "#AAAAAA"
+	end for
+	text.color = color.silver
+	
+	
+	toolIcons = {}
+	toolButtonPos = {}
+	for item in [DRAW, CLEAR, HEART, SHARK, BUBBLE, PLAYER]
+		toolIcons[item] = getTileForIndex(item)
+	end for
+	curTool = DRAW
+	drawTools curTool
+	
+	// Main Loop
+	
+	while not key.pressed("escape")
+		handleInput
+		yield
+	end while
+	key.clear
+end if

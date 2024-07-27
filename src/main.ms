@@ -2,7 +2,11 @@ tileSize = 64
 deltaTime = 1/60
 import "tileUtil"
 import "player"
+import "heart"
+import "bubble"
+import "shark"
 import "levels"
+import "levelEditor"
 
 // Initialize display and globals
 gfx.clear
@@ -37,6 +41,8 @@ tiles.clear
 
 tiles.scrollX = 0
 tiles.scrollY = 0
+levelEditor.tileDisp = tiles
+autotile.tileDisp = tiles
 
 display(7).mode = displayMode.solidColor
 display(7).color = color.rgb(53,74,178)
@@ -67,8 +73,6 @@ overlay.sprites.push overlayImage
 overlayImage.tint = color.rgb(0,38,80)
 
 
-
-
 hearts = []
 heartScale = 4
 for i in range(7)
@@ -94,23 +98,70 @@ shakeTimer = 0
 
 
 
-loadLevel = function(level)
+loadLevel = function(levelNumOrCode)
+	showThanks = false
+	if levelNumOrCode isa number and levelNumOrCode > 0 then
+		if levelNumOrCode == levels.levelList.len then showThanks = true
+		levelNumOrCode = levels.levelList[levelNumOrCode-1]
+	end if
 	tiles.clear
-	display(7).color = level.bgColor
-	tileUtil.loadFromFile level.file, globals.tiles
-	globals.tileSize = globals.tiles.cellSize[0]
-	globals.disp.sprites = []
-	globals.collectables = level.collectables
-	globals.sharks = level.sharks
+	
+//	display(7).color = level.bgColor
 
-	if level.thanksText then globals.disp.sprites.push thanksText
+	tiles.tileSetTileSize = 16
+	tiles.cellSize = 64
+	tiles.extent = [15,10]
+	levelEditor.unpackLevel levelNumOrCode
+	
+	disp.sprites = []
+	globals.collectables = []
+	globals.sharks = []
+
+	for x in range(0, tiles.extent[0]-1)
+		for y in range(0, tiles.extent[1]-1)
+			c = tiles.cell(x,y)
+			if c == levelEditor.PLAYER then
+				player.playerStartX = x
+				player.playerStartY = y
+			else if c == levelEditor.BUBBLE then
+				item = new bubble.Bubble
+				item.init
+				item.setPos x, y
+				collectables.push item
+			else if c == levelEditor.HEART then
+				item = new heart.Heart
+				item.init
+				item.setPos x, y
+				collectables.push item
+			else if c == levelEditor.SHARK then
+				sh = new shark.Shark
+				sh.init
+				sh.setPos x, y
+				sharks.push sh
+			end if
+			if autotile.nonSolidIndexes.indexOf(c) != null then
+				tiles.setCell x, y, null
+			end if
+		end for
+	end for
+
+	if showThanks then disp.sprites.push thanksText
 	for circle in player.circles
 		globals.disp.sprites.push circle
 	end for
+	disp.sprites.push player.submarine
+	player.resetPlayer
+	
+//
+//	globals.tileSize = globals.tiles.cellSize[0]
+//	globals.disp.sprites = []
+//	globals.collectables = level.collectables
+//	globals.sharks = level.sharks
+//	
+//	if level.thanksText then globals.disp.sprites.push thanksText
 	for h in hearts
 		globals.disp.sprites.push h
 	end for
-	globals.disp.sprites.push player.submarine
 	for collectable in collectables
 		globals.disp.sprites.push collectable.sprite
 		collectable.reset
@@ -119,22 +170,22 @@ loadLevel = function(level)
 		globals.disp.sprites.push sh.sprite
 		sh.reset
 	end for
-	player.playerStartX = level.playerStartPos[0]
-	player.playerStartY = level.playerStartPos[1]
-	player.resetPlayer
+//	player.playerStartX = level.playerStartPos[0]
+//	player.playerStartY = level.playerStartPos[1]
+//	player.resetPlayer
 	sharkAttacking = null
-	globals.disp.sprites.push oxygenText
+	disp.sprites.push oxygenText
 end function
 
 
 // Function to draw the game state
 drawGame = function
 	gfx.clear
-
+	
 	// Draw player
-    player.submarine.x = (player.playerX + 0.5) * tileSize
-    player.submarine.y = (player.playerY + 0.5) * tileSize + sin(2 * time) * 3 * tileSize / 64
-
+	player.submarine.x = (player.playerX + 0.5) * tileSize
+	player.submarine.y = (player.playerY + 0.5) * tileSize + sin(2 * time) * 3 * tileSize / 64
+	
 	// Draw HP
 	for i in range(hearts.len - 1)
 		hearts[i].scale = [0,0]
@@ -144,7 +195,7 @@ drawGame = function
 			hearts[hearts.len - 1 - i].scale = [heartScale, heartScale]
 		end for
 	end if
-
+	
 	// Draw oxygen meter
 	gfx.color = color.white
 	for i in range(9)
@@ -153,7 +204,7 @@ drawGame = function
 	gfx.color = color.aqua
 	oxygenHeight = 200 * (player.currentOxygen / player.maxOxygen)
 	filledRectangles = player.currentOxygen
-
+	
 	if filledRectangles > 0 then
 		for i in range(filledRectangles - 1)
 			gfx.fillRect 50, 200 + i * 22, 20, 18
@@ -166,7 +217,7 @@ drawGame = function
 	else
 		player.hideMovementIndicators
 	end if
-
+	
 	if isRestarting then
 		oxygenText.scale = [0,0]
 	else
@@ -176,7 +227,9 @@ drawGame = function
 	// Draw level display
 	text.row = 25
 	text.column = 59
-	print "Level: " + (currentLevelIndex + 1) + " "
+	if currentLevelIndex > 0 then
+		print "Level: " + currentLevelIndex + " "
+	end if
 end function
 
 
@@ -202,7 +255,7 @@ end function
 
 handleRestart = function
 	if currentRestartTime < 1 and currentRestartTime + globals.deltaTime >= 1 then 
-		loadLevel currentLevel
+		loadLevel currentLevelIndex
 	end if
 	globals.currentRestartTime += globals.deltaTime
 	t = -abs(currentRestartTime - 1) + 1
@@ -220,10 +273,10 @@ checkCollectableCollisions = function
 	for collectable in collectables
 		if collectable.checkCollision(player.playerX, player.playerY) then
 			collectable.collect
-			if collectable isa levels.heart.Heart then
+			if collectable isa heart.Heart then
 				player.playerHP += 1
 			end if
-			if collectable isa levels.bubble.Bubble then
+			if collectable isa bubble.Bubble then
 				player.currentOxygen = player.maxOxygen
 			end if
 		end if
@@ -231,109 +284,115 @@ checkCollectableCollisions = function
 end function
 
 startScreenShake = function(intensity, duration)
-    globals.shakeIntensity = intensity
-    globals.shakeDuration = duration
-    globals.shakeDecay = intensity / duration
-    globals.shakeTimer = 0
+	globals.shakeIntensity = intensity
+	globals.shakeDuration = duration
+	globals.shakeDecay = intensity / duration
+	globals.shakeTimer = 0
 end function
 
 updateScreenShake = function
-    if shakeTimer < shakeDuration then
-        globals.shakeTimer += deltaTime
-        // Calculate current intensity
-        currentIntensity = shakeIntensity - (shakeDecay * shakeTimer)
-        
-        // Generate random offsets
-        offsetX = (rnd - 0.5) * 2 * currentIntensity
-        offsetY = (rnd - 0.5) * 2 * currentIntensity
-        
-        // Apply shake to displays
-        disp.scrollX = offsetX
-        disp.scrollY = offsetY
-        tiles.scrollX = offsetX
-        tiles.scrollY = offsetY
-        gfx.scrollX = offsetX
-        gfx.scrollY = offsetY
-    else
-        // Reset scroll when shake is done
-        disp.scrollX = 0
-        disp.scrollY = 0
-        tiles.scrollX = 0
-        tiles.scrollY = 0
-        gfx.scrollX = 0
-        gfx.scrollY = 0
-    end if
+	if shakeTimer < shakeDuration then
+		globals.shakeTimer += deltaTime
+		// Calculate current intensity
+		currentIntensity = shakeIntensity - (shakeDecay * shakeTimer)
+		
+		// Generate random offsets
+		offsetX = (rnd - 0.5) * 2 * currentIntensity
+		offsetY = (rnd - 0.5) * 2 * currentIntensity
+		
+		// Apply shake to displays
+		disp.scrollX = offsetX
+		disp.scrollY = offsetY
+		tiles.scrollX = offsetX
+		tiles.scrollY = offsetY
+		gfx.scrollX = offsetX
+		gfx.scrollY = offsetY
+	else
+		// Reset scroll when shake is done
+		disp.scrollX = 0
+		disp.scrollY = 0
+		tiles.scrollX = 0
+		tiles.scrollY = 0
+		gfx.scrollX = 0
+		gfx.scrollY = 0
+	end if
 end function
 
-currentLevelIndex = 0
-currentLevel = levels.levelList[0]
-loadLevel currentLevel
-// Main game loop
-while true
+updateGame = function
 	computeDeltaTime
 	
 	if not player.isMoving and not player.isBlinking and not isRestarting and not player.needAfterMoveCheck and sharkAttacking == null then 
-		player.handleInput(tiles)
+		player.handleInput tiles
 	else
 		if player.isMoving then player.handleSmoothMovement
 		if player.isBlinking then player.handleBlink
 	end if
-
+	
 	player.handleRotation
-
+	
 	if not (player.playerHP <= 0 or player.currentOxygen <= 0) then 
 		checkCollectableCollisions
-
+		
 		if player.needAfterMoveCheck and not player.isMoving then
 			// check if the player is out of the grid
 			extents = tiles.extent
 			if player.playerX < 0 or player.playerX >= extents[0] or player.playerY < 0 or player.playerY >= extents[1] then
 				// load the next level
 				globals.currentLevelIndex += 1
-				if globals.currentLevelIndex >= levels.levelList.len then globals.currentLevelIndex = 0
-				currentLevel = levels.levelList[globals.currentLevelIndex]
+				if currentLevelIndex > levels.levelList.len then globals.currentLevelIndex = 1
 				player.submarine.scale = [0, 0]
 				restartLevel
 			end if
-
-
+			
 			for shark in sharks
 				if shark.canSeePlayer(player.playerX, player.playerY, tiles) then
-					shark.attackPlayer(player.playerX, player.playerY)
+					shark.attackPlayer player.playerX, player.playerY
 					sharkAttackSound.play
-					sharkAttacking = shark
+					globals.sharkAttacking = shark
 					break
 				end if
 			end for
 			player.needAfterMoveCheck = false
 		end if
 	end if
-
+	
 	if sharkAttacking != null then
 		sharkAttacking.updateAttack deltaTime
 		if not sharkAttacking.isAttacking then
 			player.playerHP = 0
 			player.colisionSound.play
-			sharkAttacking = null
-			startScreenShake(8, 0.8)
+			globals.sharkAttacking = null
+			startScreenShake 8, 0.8
 		end if
 	end if
-
+	
 	for shark in sharks
-		shark.animate(deltaTime)
+		shark.animate deltaTime
 	end for
-
+	
 	for collectable in collectables
 		collectable.animate
 	end for
-
+	
 	updateScreenShake
-
+	
 	drawGame
 	
 	if (player.playerHP <= 0 or player.currentOxygen <= 0) and not isRestarting then
 		restartLevel
 	end if
 	if isRestarting then handleRestart
+end function
+
+if globals.hasIndex("customLevelCode") then
+	currentLevelIndex = -1
+	levels.loadFromCode customLevelCode
+else
+	currentLevelIndex = 1
+end if
+loadLevel currentLevelIndex
+// Main game loop
+while true
+	updateGame
 	yield
 end while

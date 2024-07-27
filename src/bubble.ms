@@ -1,4 +1,6 @@
-import "collectable"
+import "importUtil"
+ensureImport "collectable"
+
 Bubble = new collectable.Collectable
 Bubble.init = function
     super.init
