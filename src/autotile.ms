@@ -1,28 +1,13 @@
-clear
-display(7).color = color.gray
-text.color = color.orange
 
-display(5).mode = displayMode.tile
-td = display(5)
-td.tileSet = file.loadImage("../images/Cliff.png")
-td.tileSetTileSize = 16
-td.cellSize = 64
-td.extent = [15,10]
-td.overlap = -1
-td.clear
-
-for x in range(0,14)
-	for y in range(0,9)
-		if rnd < 0.5 then td.setCell x, y, 12
-	end for
-end for
+nonSolidIndexes = []
 
 solid = function(x,y)
 	if x < 0 then x = 0
-	if x >= td.extent[0] then x = td.extent[0] - 1
+	if x >= tileDisp.extent[0] then x = tileDisp.extent[0] - 1
 	if y < 0 then y = 0
-	if y >= td.extent[1] then y = td.extent[1] - 1
-	return td.cell(x,y) != null
+	if y >= tileDisp.extent[1] then y = tileDisp.extent[1] - 1
+	index = tileDisp.cell(x,y)
+	return index != null and nonSolidIndexes.indexOf(index) == null
 end function
 
 fixTile = function(x,y)
@@ -76,39 +61,64 @@ fixTile = function(x,y)
 	else
 		idx = 120
 	end if
-	td.setCell x, y, idx
+	tileDisp.setCell x, y, idx
 end function
 
 fixTiles = function
-	for x in range(0,15)
-		for y in range(0,10)
+	for x in range(0, tileDisp.extent[0]-1)
+		for y in range(0, tileDisp.extent[1]-1)
 			fixTile x,y
 		end for
 	end for
 end function
 
-fixTiles
 
-while true
-	yield
-	if mouse.button then
-		prevX = null; prevY = null
-		tileX = floor(mouse.x / td.cellSize)
-		tileY = floor(mouse.y / td.cellSize)
-		set = not solid(tileX, tileY)
-		while mouse.button
-			yield
-			tileX = floor(mouse.x / td.cellSize)
-			tileY = floor(mouse.y / td.cellSize)
-			if tileX == prevX and tileY == prevY then continue
-			if set then
-				td.setCell tileX, tileY, 12
-			else
-				td.setCell tileX, tileY, null
-			end if
-			fixTiles
-			prevX = tileX
-			prevY = tileY
-		end while
-	end if
-end while
+trackAndApplyMouse = function
+	prevX = null; prevY = null
+	tileX = floor((mouse.x + tileDisp.scrollX) / tileDisp.cellSize)
+	tileY = floor((mouse.y + tileDisp.scrollY) / tileDisp.cellSize)
+	set = not solid(tileX, tileY)
+	while mouse.button
+		yield
+		tileX = floor((mouse.x + tileDisp.scrollX) / tileDisp.cellSize)
+		tileY = floor((mouse.y + tileDisp.scrollY) / tileDisp.cellSize)
+		if tileX == prevX and tileY == prevY then continue
+		if set then
+			tileDisp.setCell tileX, tileY, 12
+		else
+			tileDisp.setCell tileX, tileY, null
+		end if
+		fixTiles
+		prevX = tileX
+		prevY = tileY
+	end while
+end function
+
+if locals == globals then
+	clear
+	display(7).color = color.gray
+	text.color = color.orange
+	
+	display(5).mode = displayMode.tile
+	tileDisp = display(5)
+	tileDisp.tileSet = file.loadImage("../images/Cliff.png")
+	tileDisp.tileSetTileSize = 16
+	tileDisp.cellSize = 64
+	tileDisp.extent = [15,10]
+	tileDisp.overlap = -1
+	tileDisp.clear
+	
+	for x in range(0,14)
+		for y in range(0,9)
+			if rnd < 0.5 then tileDisp.setCell x, y, 12
+		end for
+	end for
+	fixTiles
+	
+	while true
+		yield
+		if mouse.button then
+			trackAndApplyMouse
+		end if
+	end while
+end if

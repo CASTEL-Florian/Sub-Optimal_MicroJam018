@@ -1,4 +1,6 @@
-import "collectable"
+import "importUtil"
+ensureImport "collectable"
+
 Heart = new collectable.Collectable
 Heart.init = function
     super.init
