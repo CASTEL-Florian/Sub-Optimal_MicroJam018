@@ -179,13 +179,20 @@ prepButtons = function
 		tileDisp.tileSet = file.loadImage("../images/Abyss.png")
 	end function
 	
-	text.row = 12
+	text.row = 13
 	text.column = 55
 	print "Level Code:"
-	buttons.push TextButton.make(10, 56, "Get", 9)
+	buttons.push TextButton.make(11, 56, "Get", 9)
 	buttons[-1].action = @getLevelCode
-	buttons.push TextButton.make(8, 56, "Apply", 9)
+	buttons.push TextButton.make(9, 56, "Apply", 9)
 	buttons[-1].action = @applyLevelCode
+	
+	buttons.push TextButton.make(5, 56, "Test", 9)
+	buttons[-1].action = function
+		globals.customLevelCode = packLevel
+		env.shell = "/usr/src/levelEditor"
+		run "main"
+	end function
 	
 	for b in buttons
 		b.draw
@@ -382,6 +389,10 @@ if locals == globals then
 	curTool = DRAW
 	drawTools curTool
 	prepButtons
+
+	if globals.hasIndex("customLevelCode") then
+		unpackLevel customLevelCode
+	end if
 	
 	// Main Loop
 	
@@ -390,4 +401,6 @@ if locals == globals then
 		yield
 	end while
 	key.clear
+	env.shell = ""
+	globals.remove "customLevelCode"
 end if

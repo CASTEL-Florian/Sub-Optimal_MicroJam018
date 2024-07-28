@@ -249,7 +249,11 @@ end function
 handleRestart = function
 	if currentRestartTime < 1 and currentRestartTime + deltaTime >= 1 then 
 		gfx.clear color.black
-		loadLevel currentLevelIndex
+		if globals.hasIndex("customLevelCode") then
+			loadLevel customLevelCode
+		else
+			loadLevel currentLevelIndex
+		end if
 	end if
 	globals.currentRestartTime += deltaTime
 	t = -abs(currentRestartTime - 1) + 1
@@ -329,11 +333,17 @@ updateGame = function
 			// check if the player is out of the grid
 			extents = tiles.extent
 			if player.playerX < 0 or player.playerX >= extents[0] or player.playerY < 0 or player.playerY >= extents[1] then
-				// load the next level
-				globals.currentLevelIndex += 1
-				if currentLevelIndex > levels.levelList.len then globals.currentLevelIndex = 1
-				player.submarine.scale = [0, 0]
-				restartLevel
+				// level solved!
+				if globals.hasIndex("customLevelCode") then
+					// return to the editor
+					exit
+				else
+					// load the next level
+					globals.currentLevelIndex += 1
+					if currentLevelIndex > levels.levelList.len then globals.currentLevelIndex = 1
+					player.submarine.scale = [0, 0]
+					restartLevel
+				end if
 			end if
 			
 			for shark in sharks
@@ -378,13 +388,17 @@ end function
 
 if globals.hasIndex("customLevelCode") then
 	currentLevelIndex = -1
-	levels.loadFromCode customLevelCode
+	loadLevel customLevelCode
 else
 	currentLevelIndex = 1
+	loadLevel currentLevelIndex
 end if
-loadLevel currentLevelIndex
 // Main game loop
 while true
 	updateGame
 	yield
+	if globals.hasIndex("customLevelCode") and key.pressed("escape") then
+		key.get
+		exit
+	end if
 end while
