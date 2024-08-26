@@ -170,7 +170,6 @@ loadLevel = function(levelNumOrCode)
 	disp.sprites.push oxygenText
 end function
 
-
 // Function to draw the game state
 drawGame = function
 	gfx.clear
@@ -185,33 +184,33 @@ drawGame = function
 	end for
 	if player.playerHP > 0 then
 		for i in range(player.playerHP - 1)
-			hearts[hearts.len - 1 - i].scale = [heartScale, heartScale]
+			if started then hearts[hearts.len - 1 - i].scale = [heartScale, heartScale]
 		end for
 	end if
-	
 	// Draw oxygen meter
-	gfx.color = color.white
-	for i in range(9)
-		gfx.fillRect 50, 200 + i * 22, 20, 18
-	end for
-	gfx.color = color.aqua
-	oxygenHeight = 200 * (player.currentOxygen / player.maxOxygen)
-	filledRectangles = player.currentOxygen
-	
-	if filledRectangles > 0 then
-		for i in range(filledRectangles - 1)
+	if started then
+		gfx.color = color.white
+		for i in range(9)
 			gfx.fillRect 50, 200 + i * 22, 20, 18
 		end for
+		gfx.color = color.aqua
+		oxygenHeight = 200 * (player.currentOxygen / player.maxOxygen)
+		filledRectangles = player.currentOxygen
+		
+		if filledRectangles > 0 then
+			for i in range(filledRectangles - 1)
+				gfx.fillRect 50, 200 + i * 22, 20, 18
+			end for
+		end if
 	end if
-	
 	// Draw movement indicators
-	if not player.isMoving and not player.isBlinking and not isRestarting and not player.needAfterMoveCheck and sharkAttacking == null then 
+	if not player.isMoving and not player.isBlinking and not isRestarting and not player.needAfterMoveCheck and sharkAttacking == null and started then 
 		player.drawMovementIndicators(tiles)
 	else
 		player.hideMovementIndicators
 	end if
 	
-	if isRestarting then
+	if isRestarting or not started then
 		oxygenText.scale = [0,0]
 	else
 		oxygenText.scale = [4,4]
@@ -220,7 +219,7 @@ drawGame = function
 	// Draw level display
 	text.row = 25
 	text.column = 59
-	if currentLevelIndex > 0 then
+	if currentLevelIndex > 0 and started then
 		print "Level: " + currentLevelIndex + " "
 	end if
 end function
@@ -393,6 +392,87 @@ else
 	currentLevelIndex = 1
 	loadLevel currentLevelIndex
 end if
+
+
+// Main Menu
+
+gameText = new Sprite
+gameText.image = file.loadImage("/usr/images/subOptimalText.png")
+gameText.x = 480
+gameText.y = 520
+gameText.scale = [6, 6]
+disp.sprites.push gameText
+
+arrow = new Sprite
+arrow.image = file.loadImage("/usr/images/arrow.png")
+arrow.x = 210
+arrow.y = 282
+//arrow.y = 234
+arrow.scale = [1, 1]
+arrow.tint = color.rgb(200,200,200)
+disp.sprites.push arrow
+
+
+playButton = levelEditor.TextButton.make(11, 16, "Play")
+levelEditorButton = levelEditor.TextButton.make(9, 16, "Level Editor", 16)
+
+started = false
+playButton.action = function
+	globals.started = true
+end function
+playButton.wasPressed = false
+
+levelEditorButton.action = function
+	run "levelEditor"
+end function
+levelEditorButton.wasPressed = false
+
+mainMenuButtons = [playButton, levelEditorButton]
+
+cursorMovedLastFrame = false
+
+while not globals.hasIndex("customLevelCode") and not started
+	drawGame
+	for b in mainMenuButtons
+		over = b.isMouseOver
+		if b.wasPressed and over and not mouse.button then b.action
+		b.wasPressed = mouse.button and over
+
+		b.draw over and mouse.button
+
+		if over and b == playButton then arrow.y = 282
+		if over and b == levelEditorButton then arrow.y = 234
+
+	end for
+	if key.pressed("return") then
+		if arrow.y == 282 then
+			globals.started = true
+		end if
+		if arrow.y == 234 then
+			run "levelEditor"
+		end if
+	end if
+	if key.axis("Vertical") > 0.5 or key.axis("Vertical") < -0.5 then
+		if not cursorMovedLastFrame then
+			cursorMovedLastFrame = true
+			if arrow.y == 282 then
+				arrow.y = 234
+			else if arrow.y == 234 then
+				arrow.y = 282
+			end if
+		end if
+	else
+		cursorMovedLastFrame = false
+	end if
+	yield
+end while
+
+text.clear
+arrow.tint = color.clear
+
+started = true
+gameText.tint = color.clear
+
 // Main game loop
 while true
 	updateGame
